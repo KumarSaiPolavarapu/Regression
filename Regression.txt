@@ -1,0 +1,57 @@
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.linear_model import RidgeCV, LassoCV
+import pandas as pd
+
+# Load the dataset
+file_path = 'C:\\Users\\kumar\\Downloads\\train.csv'
+data = pd.read_csv(file_path)
+
+# Separate features and target
+X = data.drop(columns=['SalePrice', 'Id'])
+y = data['SalePrice']
+
+# Identify numerical and categorical columns
+numerical_cols = X.select_dtypes(include=['int64', 'float64']).columns
+categorical_cols = X.select_dtypes(include=['object']).columns
+
+# Preprocessing for numerical data
+numerical_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='mean')),
+    ('scaler', StandardScaler())
+])
+
+# Preprocessing for categorical data
+categorical_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='most_frequent')),
+    ('onehot', OneHotEncoder(handle_unknown='ignore'))
+])
+
+# Bundle preprocessing for numerical and categorical data
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numerical_transformer, numerical_cols),
+        ('cat', categorical_transformer, categorical_cols)
+    ])
+
+# Preprocess the data
+X_processed = preprocessor.fit_transform(X)
+
+# Split the data
+X_train, X_test, y_train, y_test = train_test_split(X_processed, y, test_size=0.2, random_state=42)
+
+# Train ridge and lasso regression models with cross-validation to find optimal alpha
+ridge_cv = RidgeCV(alphas=[0.1, 1.0, 10.0, 100.0], cv=5)
+lasso_cv = LassoCV(alphas=[0.1, 1.0, 10.0, 100.0], cv=5, max_iter=10000)
+
+ridge_cv.fit(X_train, y_train)
+lasso_cv.fit(X_train, y_train)
+
+# Get the optimal alphas
+ridge_alpha_optimal = ridge_cv.alpha_
+lasso_alpha_optimal = lasso_cv.alpha_
+
+ridge_alpha_optimal, lasso_alpha_optimal
